@@ -1,0 +1,80 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fix project structure
+        run: |
+          mkdir -p app/src/main/java/com/paradox/gameboostlite
+          mkdir -p app/src/main/res/values
+          cp MainActivity.java app/src/main/java/com/paradox/gameboostlite/
+          cp GameSessionActivity.java app/src/main/java/com/paradox/gameboostlite/
+          cp AndroidManifest.xml app/src/main/
+          cp strings.xml app/src/main/res/values/
+          cp colors.xml app/src/main/res/values/
+          cp styles.xml app/src/main/res/values/
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          EOF
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name='GameBoostLite'
+          include ':app'
+          EOF
+          cat > app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+
+          android {
+              namespace 'com.paradox.gameboostlite'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.paradox.gameboostlite'
+                  minSdk 26
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android
+        uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameBoostLite-APK
+          path: app/build/outputs/apk/debug/*.apk
